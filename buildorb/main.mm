@@ -98,12 +98,12 @@ bool GetDevice(IOHIDManagerRef hid_manager,
 
 bool SetColor(IOHIDDeviceRef device_ref, const int color) {
   if (color > 7) {
-    printf("ERROR: invalid argument.\n");
+    NSLog(@"ERROR: invalid argument.");
     return false;
   }
   
   if (IOHIDDeviceOpen(device_ref, kIOHIDOptionsTypeNone) != kIOReturnSuccess) {
-    printf("ERROR: failed IOHIDDeviceOpen.\n");
+    NSLog(@"ERROR: failed IOHIDDeviceOpen.");
     return false;
   }
   
@@ -114,12 +114,12 @@ bool SetColor(IOHIDDeviceRef device_ref, const int color) {
   const IOReturn result = IOHIDDeviceSetReport(
                                                device_ref, kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
   if (result != kIOReturnSuccess) {
-    printf("ERROR: failed IOHIDDeviceSetReport.\n");
+    NSLog(@"ERROR: failed IOHIDDeviceSetReport.");
     return false;
   }
   
   if (IOHIDDeviceClose(device_ref, kIOHIDOptionsTypeNone) != kIOReturnSuccess) {
-    printf("ERROR: failed IOHIDDeviceClose.\n");
+    NSLog(@"ERROR: failed IOHIDDeviceClose.");
     return false;
   }
   
@@ -135,14 +135,14 @@ int main(int argc, const char *argv[]) {
   
     IOHIDManagerRef hid_manager = NULL;
     if (!CreateAndInitHidManager(&hid_manager)) {
-      printf("ERROR: failed CreateAndInitHidManager.\n");
+      NSLog(@"ERROR: failed CreateAndInitHidManager.");
       return false;
     }
   
     IOHIDDeviceRef device_ref = NULL;
     const int index = (argc == 2) ? 0 : atoi(argv[2]);
     if (!GetDevice(hid_manager, index, &device_ref)) {
-      printf("ERROR: failed GetDevice.\n");
+      NSLog(@"ERROR: failed GetDevice.");
       return false;
     }
   
@@ -152,6 +152,6 @@ int main(int argc, const char *argv[]) {
     return 0;
   }
 }
-//    NSLog(@"Hello, World!");
+
 
 
