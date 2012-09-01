@@ -100,28 +100,13 @@ int CompareDeviceRef(const void *device_a, const void *device_b) {
           (int)GetLocationID(*(IOHIDDeviceRef*)device_b));
 }
   
-CFSetRef CopyDeviceSet(IOHIDManagerRef hid_manager, const int product_id, const int vendor_id) {
-  CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
-                                                          &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-  CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey),
-                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
-                                      &product_id));
-  CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey),
-                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
-                                      &vendor_id));
-  IOHIDManagerSetDeviceMatching(hid_manager, dict);
-  CFRelease(dict);
-  
-  return IOHIDManagerCopyDevices(hid_manager);
-}
-
-bool GetDevice(IOHIDManagerRef hid_manager,
-               const int index,
+bool GetDevice(const int index,
                IOHIDDeviceRef *device) {
+  id manager_obj = [[HIDManager alloc] init];
+  
   const int kProductId = 0x1320;
   const int kVendorId = 0x1294;
-  
-  CFSetRef device_set = CopyDeviceSet(hid_manager, kProductId, kVendorId);
+  CFSetRef device_set = [manager_obj copyDeviceSetWithVendorID:kVendorId productId:kProductId];
   const CFIndex count = CFSetGetCount(device_set);
   if (count == 0 || count <= index) {
     CFRelease(device_set);
@@ -182,12 +167,9 @@ int main(int argc, const char *argv[]) {
       return 1;
     }
 
-    id manager_obj = [[HIDManager alloc] init];
-    IOHIDManagerRef hid_manager = [manager_obj managerRef];
-  
     IOHIDDeviceRef device_ref = NULL;
     const int index = (argc == 2) ? 0 : atoi(argv[2]);
-    if (!GetDevice(hid_manager, index, &device_ref)) {
+    if (!GetDevice(index, &device_ref)) {
       NSLog(@"ERROR: failed GetDevice.");
       return false;
     }
