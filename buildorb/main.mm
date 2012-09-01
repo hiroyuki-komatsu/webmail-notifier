@@ -18,7 +18,9 @@
 }
 
 - (id)init;
+- (void)dealloc;
 - (IOHIDManagerRef)managerRef;
+- (CFSetRef) copyDeviceSetWithVendorID: (int)vendor_id productId: (int)product_id;
 @end
 
 @implementation HIDManager
@@ -38,18 +40,34 @@
   return self;
 }
 
+- (void)dealloc {
+  CFRelease(manager_ref_);
+}
+
 - (IOHIDManagerRef)managerRef {
   return manager_ref_;
 }
+
+- (CFSetRef)copyDeviceSetWithVendorID:(int)vendor_id productId:(int)product_id {
+  CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+                                                          &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey),
+                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                                      &product_id));
+  CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey),
+                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                                      &vendor_id));
+  IOHIDManagerSetDeviceMatching(manager_ref_, dict);
+  CFRelease(dict);
   
+  return IOHIDManagerCopyDevices(manager_ref_);
+}
 
 @end
 
 
 
 namespace {
-
-
 bool GetLongProperty(IOHIDDeviceRef device_ref,
                      CFStringRef key,
                      long *value) {
@@ -81,6 +99,21 @@ int CompareDeviceRef(const void *device_a, const void *device_b) {
   return ((int)GetLocationID(*(IOHIDDeviceRef*)device_a) -
           (int)GetLocationID(*(IOHIDDeviceRef*)device_b));
 }
+  
+CFSetRef CopyDeviceSet(IOHIDManagerRef hid_manager, const int product_id, const int vendor_id) {
+  CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+                                                          &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey),
+                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                                      &product_id));
+  CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey),
+                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
+                                      &vendor_id));
+  IOHIDManagerSetDeviceMatching(hid_manager, dict);
+  CFRelease(dict);
+  
+  return IOHIDManagerCopyDevices(hid_manager);
+}
 
 bool GetDevice(IOHIDManagerRef hid_manager,
                const int index,
@@ -88,41 +121,29 @@ bool GetDevice(IOHIDManagerRef hid_manager,
   const int kProductId = 0x1320;
   const int kVendorId = 0x1294;
   
-  CFMutableDictionaryRef dict = CFDictionaryCreateMutable(
-                                                          kCFAllocatorDefault, 0,
-                                                          &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-  CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey),
-                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
-                                      &kProductId));
-  CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey),
-                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
-                                      &kVendorId));
-  IOHIDManagerSetDeviceMatching(hid_manager, dict);
-  CFRelease(dict);
-  
-  CFSetRef device_set = IOHIDManagerCopyDevices(hid_manager);
+  CFSetRef device_set = CopyDeviceSet(hid_manager, kProductId, kVendorId);
   const CFIndex count = CFSetGetCount(device_set);
   if (count == 0 || count <= index) {
     CFRelease(device_set);
     return false;
   }
-  
+    
   IOHIDDeviceRef *device_array = (IOHIDDeviceRef *)malloc(count * sizeof(IOHIDDeviceRef));
   CFSetGetValues(device_set, (const void **)device_array);
   CFRelease(device_set);
-  
+    
   printf("%d\n", (int)count);
   qsort(device_array, count, sizeof(IOHIDDeviceRef), CompareDeviceRef);
-  
+    
   for (int i = 0; i < (int)count; ++i) { 
     printf("%d: 0x%lx\n", i, GetLocationID(device_array[i]));
   }
-  
+    
   *device = device_array[index];
   free(device_array);
   return true;
 }
-
+  
 
 bool SetColor(IOHIDDeviceRef device_ref, const int color) {
   if (color > 7) {
