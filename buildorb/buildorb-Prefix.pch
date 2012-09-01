@@ -1,0 +1,7 @@
+//
+// Prefix header for all source files of the 'buildorb' target in the 'buildorb' project
+//
+
+#ifdef __OBJC__
+    #import <Foundation/Foundation.h>
+#endif
