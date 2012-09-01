@@ -7,20 +7,48 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <IOKit/hid/IOHIDLib.h>
 
-#include <IOKit/hid/IOHIDLib.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace {
-bool CreateAndInitHidManager(IOHIDManagerRef *hid_manager) {
-  *hid_manager = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
-  IOHIDManagerScheduleWithRunLoop(*hid_manager,
-                                  CFRunLoopGetMain(),
-                                  kCFRunLoopDefaultMode);
-  const IOReturn result = IOHIDManagerOpen(*hid_manager, kIOHIDOptionsTypeNone);
-  return (result == kIOReturnSuccess);
+@interface HIDManager : NSObject {
+  @private
+  IOHIDManagerRef manager_ref_;  
 }
+
+- (id)init;
+- (IOHIDManagerRef)managerRef;
+@end
+
+@implementation HIDManager
+
+- (id)init {
+  self = [super init];
+  if (self != nil) {
+    manager_ref_ = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    IOHIDManagerScheduleWithRunLoop(manager_ref_,
+                                    CFRunLoopGetMain(),
+                                    kCFRunLoopDefaultMode);
+    const IOReturn result = IOHIDManagerOpen(manager_ref_, kIOHIDOptionsTypeNone);
+    if (result != kIOReturnSuccess) {
+      NSLog(@"Failed IOHIDManagerOpen.");
+    }
+  }
+  return self;
+}
+
+- (IOHIDManagerRef)managerRef {
+  return manager_ref_;
+}
+  
+
+@end
+
+
+
+namespace {
+
 
 bool GetLongProperty(IOHIDDeviceRef device_ref,
                      CFStringRef key,
@@ -132,12 +160,9 @@ int main(int argc, const char *argv[]) {
     if (argc < 2 || 3 < argc) {
       return 1;
     }
-  
-    IOHIDManagerRef hid_manager = NULL;
-    if (!CreateAndInitHidManager(&hid_manager)) {
-      NSLog(@"ERROR: failed CreateAndInitHidManager.");
-      return false;
-    }
+
+    id manager_obj = [[HIDManager alloc] init];
+    IOHIDManagerRef hid_manager = [manager_obj managerRef];
   
     IOHIDDeviceRef device_ref = NULL;
     const int index = (argc == 2) ? 0 : atoi(argv[2]);
