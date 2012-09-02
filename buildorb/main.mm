@@ -13,64 +13,26 @@
 #include <stdlib.h>
 
 @interface HIDManager : NSObject {
-  @private
+@private
   IOHIDManagerRef manager_ref_;  
 }
 
 - (id)init;
 - (void)dealloc;
 - (IOHIDManagerRef)managerRef;
-- (NSSet *) copyDeviceSetWithVendorId: (int)vendor_id productId: (int)product_id;
+- (NSArray *) getDevicesWithVendorId: (int)vendor_id productId: (int)product_id;
 @end
 
 
 @interface HIDDevice : NSObject {
 @private
   IOHIDDeviceRef device_ref_;
-}  
+}
+
+- (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device;
+- (NSNumber *)getNumberProperty: (NSString *)key;
+- (NSNumber *)getLocationId;
 @end
-
-
-@implementation HIDManager
-- (id)init {
-  self = [super init];
-  if (self != nil) {
-    manager_ref_ = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
-    IOHIDManagerScheduleWithRunLoop(manager_ref_,
-                                    CFRunLoopGetMain(),
-                                    kCFRunLoopDefaultMode);
-    const IOReturn result = IOHIDManagerOpen(manager_ref_, kIOHIDOptionsTypeNone);
-    if (result != kIOReturnSuccess) {
-      NSLog(@"Failed IOHIDManagerOpen.");
-    }
-  }
-  return self;
-}
-
-- (void)dealloc {
-  CFRelease(manager_ref_);
-}
-
-- (IOHIDManagerRef)managerRef {
-  return manager_ref_;
-}
-
-- (NSSet *)copyDeviceSetWithVendorId:(int)vendor_id productId:(int)product_id {
-  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
-  [dict setObject:[NSNumber numberWithInt:vendor_id]
-           forKey:[NSString stringWithCString:kIOHIDVendorIDKey
-                                     encoding:NSUTF8StringEncoding]];
-  [dict setObject:[NSNumber numberWithInt:product_id]
-           forKey:[NSString stringWithCString:kIOHIDProductIDKey
-                                     encoding:NSUTF8StringEncoding]];
-
-  IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
-  return (NSSet *)IOHIDManagerCopyDevices(manager_ref_);
-}
-
-@end
-
-
 
 namespace {
 bool GetLongProperty(IOHIDDeviceRef device_ref,
@@ -111,27 +73,102 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
     return NSOrderedSame;
   }
 }
+}  // namespace
+
+@implementation HIDManager
+- (id)init {
+  self = [super init];
+  if (self != nil) {
+    manager_ref_ = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    IOHIDManagerScheduleWithRunLoop(manager_ref_,
+                                    CFRunLoopGetMain(),
+                                    kCFRunLoopDefaultMode);
+    const IOReturn result = IOHIDManagerOpen(manager_ref_, kIOHIDOptionsTypeNone);
+    if (result != kIOReturnSuccess) {
+      NSLog(@"Failed IOHIDManagerOpen.");
+    }
+  }
+  return self;
+}
+
+- (void)dealloc {
+  CFRelease(manager_ref_);
+}
+
+- (IOHIDManagerRef)managerRef {
+  return manager_ref_;
+}
+
+- (NSArray *)getDevicesWithVendorId:(int)vendor_id productId:(int)product_id {
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:[NSNumber numberWithInt:vendor_id]
+           forKey:[NSString stringWithCString:kIOHIDVendorIDKey
+                                     encoding:NSUTF8StringEncoding]];
+  [dict setObject:[NSNumber numberWithInt:product_id]
+           forKey:[NSString stringWithCString:kIOHIDProductIDKey
+                                     encoding:NSUTF8StringEncoding]];
+
+  IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
+
+  NSSet *device_set = (NSSet *)IOHIDManagerCopyDevices(manager_ref_);
+  NSArray *device_array = [[device_set allObjects]
+                           sortedArrayUsingFunction:CompareDeviceRef
+                           context:NULL];
+  return device_array;
+}
+
+@end
+
+@implementation HIDDevice
+- (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device {
+  self = [super init];
+  if (self != nil) {
+    device_ref_ = device;
+  }
+  return self;
+}
+
+- (NSNumber *)getNumberProperty:(NSString *)key {
+  if (!IOHIDDeviceGetTypeID() == CFGetTypeID(device_ref_)) {
+    return nil;
+  }
   
+  CFTypeRef cftype_ref = IOHIDDeviceGetProperty(device_ref_, (CFStringRef)key);
+  if (!cftype_ref ||
+      CFNumberGetTypeID() != CFGetTypeID(cftype_ref)) {
+    return nil;
+  }
+  
+  return (NSNumber *)cftype_ref;
+}
+
+- (NSNumber *)getLocationId {
+  return [self getNumberProperty:
+          [NSString stringWithCString:kIOHIDLocationIDKey
+                             encoding:NSUTF8StringEncoding]];
+}
+@end
+
+namespace {
 bool GetDevice(const int index,
                IOHIDDeviceRef *device) {
-  HIDManager *manager_obj = [[HIDManager alloc] init];
+  HIDManager *manager = [[HIDManager alloc] init];
   
   const int kProductId = 0x1320;
   const int kVendorId = 0x1294;
-  NSSet *device_set = [manager_obj copyDeviceSetWithVendorId:kVendorId productId:kProductId];
-  const NSUInteger count = [device_set count];
+  NSArray *device_array = [manager getDevicesWithVendorId:kVendorId productId:kProductId];
+  const NSUInteger count = [device_array count];
   if (count == 0 || count <= index) {
     return false;
   }
-  
-  NSArray *device_array = [[device_set allObjects] sortedArrayUsingFunction:CompareDeviceRef
-                                                                    context:NULL];
   printf("%d\n", (int)count);
     
   for (int i = 0; i < (int)count; ++i) { 
-    printf("%d: 0x%lx\n", i, GetLocationID((IOHIDDeviceRef)[device_array objectAtIndex:i]));
+    HIDDevice *hid_device = [[HIDDevice alloc] initWithIOHIDDeviceRef:
+                             (IOHIDDeviceRef)[device_array objectAtIndex:i]];
+    printf("%d: 0x%x\n", i, [[hid_device getLocationId] intValue]);
   }
-    
+
   *device = (IOHIDDeviceRef)[device_array objectAtIndex:index];
   return true;
 }
@@ -153,7 +190,7 @@ bool SetColor(IOHIDDeviceRef device_ref, const int color) {
   buffer[0] = color;
   const CFIndex kReportID = 0;
   const IOReturn result = IOHIDDeviceSetReport(
-                                               device_ref, kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
+      device_ref, kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
   if (result != kIOReturnSuccess) {
     NSLog(@"ERROR: failed IOHIDDeviceSetReport.");
     return false;
