@@ -20,7 +20,7 @@
 - (id)init;
 - (void)dealloc;
 - (IOHIDManagerRef)managerRef;
-- (NSArray *) getDevicesWithVendorId: (int)vendor_id productId: (int)product_id;
+- (NSArray *) getDevicesWithVendorId: (int)vendor_id productId:(int)product_id;
 @end
 
 
@@ -46,6 +46,7 @@
 - (NSUInteger) count;
 - (NSArray *)devices;
 - (void)outputDevices;
+- (BOOL)setDevice: (int)device_index color:(int)color_index;
 @end
 
 
@@ -189,55 +190,38 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
     ++index;
   }
 }
-@end
 
-namespace {
-bool GetDevice(const int index,
-               IOHIDDeviceRef *device) {
-  HIDManager *manager = [[HIDManager alloc] init];
-  WebmailNotifier *notifier = [[WebmailNotifier alloc] initWithHIDManager:manager];
-  NSArray *device_array = [notifier devices];
-  const NSUInteger count = [device_array count];
-  if (count == 0 || count <= index) {
-    return false;
-  }
-    
-  [notifier outputDevices];
-  *device = [[device_array objectAtIndex:index] deviceRef];
-  return true;
-}
-  
-
-bool SetColor(HIDDevice *device, const int color) {
-  if (color > 7) {
-    NSLog(@"ERROR: invalid argument.");
-    return false;
+- (BOOL)setDevice: (int)device_index color:(int)color_index {
+  if (color_index > 7) {
+    NSLog(@"ERROR: invalid color argument.");
+    return NO;
   }
   
+  HIDDevice *device = [devices_ objectAtIndex:device_index];
   if (![device open]) {
     NSLog(@"ERROR: failed IOHIDDeviceOpen.");
-    return false;
+    return NO;
   }
   
   const size_t kBufferSize = 1;
   uint8_t buffer[kBufferSize];
-  buffer[0] = color;
+  buffer[0] = color_index;
   const CFIndex kReportID = 0;
-  const IOReturn result = IOHIDDeviceSetReport(
-      [device deviceRef], kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
+  const IOReturn result =
+      IOHIDDeviceSetReport([device deviceRef], kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
   if (result != kIOReturnSuccess) {
     NSLog(@"ERROR: failed IOHIDDeviceSetReport.");
-    return false;
+    return NO;
   }
   
   if (![device close]) {
     NSLog(@"ERROR: failed IOHIDDeviceClose.");
-    return false;
+    return NO;
   }
   
-  return true;
+  return YES;
 }
-}  // namespace
+@end
 
 int main(int argc, const char *argv[]) {
   @autoreleasepool {
@@ -263,9 +247,7 @@ int main(int argc, const char *argv[]) {
       return 1;
     }
     
-    HIDDevice *device = [[notifier devices] objectAtIndex:index];
-    SetColor(device, color);
-  
+    [notifier setDevice: index color:color];
     return 0;
   }
 }
