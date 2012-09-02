@@ -165,10 +165,8 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 }
 
 - (void)outputDevices {
-  NSEnumerator *enumerator = [devices_ objectEnumerator];
-  HIDDevice *device;
   int index = 0;
-  while ((device = [enumerator nextObject]) != nil) {
+  for (HIDDevice *device in devices_) {
     printf("%d: 0x%x\n", index, [[device getLocationId] intValue]);
     ++index;
   }
