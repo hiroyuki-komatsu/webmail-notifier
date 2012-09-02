@@ -56,17 +56,15 @@
 }
 
 - (CFSetRef)copyDeviceSetWithVendorId:(int)vendor_id productId:(int)product_id {
-  CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
-                                                          &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-  CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey),
-                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
-                                      &product_id));
-  CFDictionarySetValue(dict, CFSTR(kIOHIDVendorIDKey),
-                       CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType,
-                                      &vendor_id));
-  IOHIDManagerSetDeviceMatching(manager_ref_, dict);
-  CFRelease(dict);
-  
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:[NSNumber numberWithInt:vendor_id]
+           forKey:[NSString stringWithCString:kIOHIDVendorIDKey
+                                     encoding:NSUTF8StringEncoding]];
+  [dict setObject:[NSNumber numberWithInt:product_id]
+           forKey:[NSString stringWithCString:kIOHIDProductIDKey
+                                     encoding:NSUTF8StringEncoding]];
+
+  IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
   return IOHIDManagerCopyDevices(manager_ref_);
 }
 
