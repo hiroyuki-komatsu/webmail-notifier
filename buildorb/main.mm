@@ -20,11 +20,18 @@
 - (id)init;
 - (void)dealloc;
 - (IOHIDManagerRef)managerRef;
-- (CFSetRef) copyDeviceSetWithVendorID: (int)vendor_id productId: (int)product_id;
+- (CFSetRef) copyDeviceSetWithVendorId: (int)vendor_id productId: (int)product_id;
 @end
 
-@implementation HIDManager
 
+@interface HIDDevice : NSObject {
+@private
+  IOHIDDeviceRef device_ref_;
+}  
+@end
+
+
+@implementation HIDManager
 - (id)init {
   self = [super init];
   if (self != nil) {
@@ -48,7 +55,7 @@
   return manager_ref_;
 }
 
-- (CFSetRef)copyDeviceSetWithVendorID:(int)vendor_id productId:(int)product_id {
+- (CFSetRef)copyDeviceSetWithVendorId:(int)vendor_id productId:(int)product_id {
   CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
                                                           &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetValue(dict, CFSTR(kIOHIDProductIDKey),
@@ -106,7 +113,7 @@ bool GetDevice(const int index,
   
   const int kProductId = 0x1320;
   const int kVendorId = 0x1294;
-  CFSetRef device_set = [manager_obj copyDeviceSetWithVendorID:kVendorId productId:kProductId];
+  CFSetRef device_set = [manager_obj copyDeviceSetWithVendorId:kVendorId productId:kProductId];
   const CFIndex count = CFSetGetCount(device_set);
   if (count == 0 || count <= index) {
     CFRelease(device_set);
