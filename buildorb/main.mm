@@ -35,6 +35,7 @@
 - (IOHIDDeviceRef)deviceRef;
 - (NSNumber *)getNumberProperty: (NSString *)key;
 - (NSNumber *)getLocationId;
+- (BOOL)setReport: (int)report_id output:(NSData *)data;
 @end
 
 @interface WebmailNotifier : NSObject {
@@ -89,13 +90,14 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 }
 
 - (NSArray *)getDevicesWithVendorId:(int)vendor_id productId:(int)product_id {
-  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
-  [dict setObject:[NSNumber numberWithInt:vendor_id]
-           forKey:[NSString stringWithCString:kIOHIDVendorIDKey
-                                     encoding:NSUTF8StringEncoding]];
-  [dict setObject:[NSNumber numberWithInt:product_id]
-           forKey:[NSString stringWithCString:kIOHIDProductIDKey
-                                     encoding:NSUTF8StringEncoding]];
+  NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
+                        // Vendor ID
+                        [NSNumber numberWithInt:vendor_id],
+                        @kIOHIDVendorIDKey,
+                        // Product ID
+                        [NSNumber numberWithInt:product_id],
+                        @kIOHIDProductIDKey,
+                        nil];
 
   IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
 
@@ -157,6 +159,11 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
           [NSString stringWithCString:kIOHIDLocationIDKey
                              encoding:NSUTF8StringEncoding]];
 }
+
+- (BOOL)setReport:(int)report_id output:(NSData *)data {
+  const IOReturn result = IOHIDDeviceSetReport(device_ref_, kIOHIDReportTypeOutput, report_id, (const uint8_t *)[data bytes], [data length]);
+  return (result == kIOReturnSuccess);
+}
 @end
 
 
@@ -182,7 +189,6 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   return [devices_ count];
 }
 
-
 - (void)outputDevices {
   int index = 0;
   for (HIDDevice *device in devices_) {
@@ -206,10 +212,9 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   const size_t kBufferSize = 1;
   uint8_t buffer[kBufferSize];
   buffer[0] = color_index;
+  NSData *data = [[NSData alloc] initWithBytes:buffer length:kBufferSize];
   const CFIndex kReportID = 0;
-  const IOReturn result =
-      IOHIDDeviceSetReport([device deviceRef], kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
-  if (result != kIOReturnSuccess) {
+  if (![device setReport:kReportID output:data]) {
     NSLog(@"ERROR: failed IOHIDDeviceSetReport.");
     return NO;
   }
@@ -247,7 +252,7 @@ int main(int argc, const char *argv[]) {
       return 1;
     }
     
-    [notifier setDevice: index color:color];
+    [notifier setDevice:index color:color];
     return 0;
   }
 }
