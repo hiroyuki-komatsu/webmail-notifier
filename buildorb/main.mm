@@ -30,6 +30,7 @@
 }
 
 - (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device;
+- (IOHIDDeviceRef)deviceRef;
 - (NSNumber *)getNumberProperty: (NSString *)key;
 - (NSNumber *)getLocationId;
 @end
@@ -62,9 +63,21 @@ long GetLocationID(IOHIDDeviceRef device_ref) {
   return result;
 }
 
-NSInteger CompareDeviceRef(id device1, id device2, void *context) {
+NSInteger CompareDeviceRef2(id device1, id device2, void *context) {
   const int comp = ((int)GetLocationID((IOHIDDeviceRef)device1) -
                     (int)GetLocationID((IOHIDDeviceRef)device2)); 
+  if (comp < 0) {
+    return NSOrderedAscending;
+  } else if (comp > 0) {
+    return NSOrderedDescending;
+  } else {
+    return NSOrderedSame;
+  }
+}
+
+NSInteger CompareDeviceRef(id device1, id device2, void *context) {
+  const int comp = ([[(HIDDevice *)device1 getLocationId] intValue] -
+                    [[(HIDDevice *)device2 getLocationId] intValue]); 
   if (comp < 0) {
     return NSOrderedAscending;
   } else if (comp > 0) {
@@ -111,10 +124,18 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
 
   NSSet *device_set = (NSSet *)IOHIDManagerCopyDevices(manager_ref_);
-  NSArray *device_array = [[device_set allObjects]
+
+  NSEnumerator *set_enum = [device_set objectEnumerator];
+  NSMutableArray *device_array = [[NSMutableArray alloc] init];
+  IOHIDDeviceRef device_ref;
+  while ((device_ref = (IOHIDDeviceRef)[set_enum nextObject]) != nil) {
+    [device_array addObject:[[HIDDevice alloc]
+                             initWithIOHIDDeviceRef:device_ref]];
+  }
+  NSArray *sorted_array = [device_array
                            sortedArrayUsingFunction:CompareDeviceRef
                            context:NULL];
-  return device_array;
+  return sorted_array;
 }
 
 @end
@@ -126,6 +147,10 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
     device_ref_ = device;
   }
   return self;
+}
+
+- (IOHIDDeviceRef)deviceRef {
+  return device_ref_;
 }
 
 - (NSNumber *)getNumberProperty:(NSString *)key {
@@ -164,12 +189,11 @@ bool GetDevice(const int index,
   printf("%d\n", (int)count);
     
   for (int i = 0; i < (int)count; ++i) { 
-    HIDDevice *hid_device = [[HIDDevice alloc] initWithIOHIDDeviceRef:
-                             (IOHIDDeviceRef)[device_array objectAtIndex:i]];
-    printf("%d: 0x%x\n", i, [[hid_device getLocationId] intValue]);
+    printf("%d: 0x%x\n", i,
+           [[[device_array objectAtIndex:i] getLocationId] intValue]);
   }
 
-  *device = (IOHIDDeviceRef)[device_array objectAtIndex:index];
+  *device = [[device_array objectAtIndex:index] deviceRef];
   return true;
 }
   
