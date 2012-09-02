@@ -35,46 +35,14 @@
 - (NSNumber *)getLocationId;
 @end
 
+@interface WebmailNotifier : NSObject {
+@private
+  NSArray *devices_;
+}
+@end
+
+
 namespace {
-bool GetLongProperty(IOHIDDeviceRef device_ref,
-                     CFStringRef key,
-                     long *value) {
-  if (!device_ref ||
-      !IOHIDDeviceGetTypeID() == CFGetTypeID(device_ref)) {
-    return false;
-  }
-  
-  CFTypeRef cftype_ref = IOHIDDeviceGetProperty(device_ref, key);
-  if (!cftype_ref ||
-      CFNumberGetTypeID() != CFGetTypeID(cftype_ref)) {
-    return false;
-  }
-  
-  return CFNumberGetValue((CFNumberRef)cftype_ref,
-                          kCFNumberSInt32Type,
-                          value);
-}
-
-long GetLocationID(IOHIDDeviceRef device_ref) {
-  long result = 0;
-  GetLongProperty(device_ref,
-                  CFSTR(kIOHIDLocationIDKey),
-                  &result);
-  return result;
-}
-
-NSInteger CompareDeviceRef2(id device1, id device2, void *context) {
-  const int comp = ((int)GetLocationID((IOHIDDeviceRef)device1) -
-                    (int)GetLocationID((IOHIDDeviceRef)device2)); 
-  if (comp < 0) {
-    return NSOrderedAscending;
-  } else if (comp > 0) {
-    return NSOrderedDescending;
-  } else {
-    return NSOrderedSame;
-  }
-}
-
 NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   const int comp = ([[(HIDDevice *)device1 getLocationId] intValue] -
                     [[(HIDDevice *)device2 getLocationId] intValue]); 
