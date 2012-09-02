@@ -39,6 +39,10 @@
 @private
   NSArray *devices_;
 }
+
+- (id)initWithHIDManager: (HIDManager *)manager;
+- (NSArray *)devices;
+- (void)outputDevices;
 @end
 
 
@@ -105,7 +109,6 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
                            context:NULL];
   return sorted_array;
 }
-
 @end
 
 @implementation HIDDevice
@@ -142,25 +145,48 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 }
 @end
 
+
+@implementation WebmailNotifier
+
+- (id)initWithHIDManager: (HIDManager *)manager {
+  self = [super init];
+  if (self == nil) {
+    return nil;
+  }
+
+  const int kProductId = 0x1320;
+  const int kVendorId = 0x1294;
+  devices_ = [manager getDevicesWithVendorId:kVendorId productId:kProductId];
+  return self;
+}
+
+- (NSArray *)devices {
+  return devices_;
+}
+
+- (void)outputDevices {
+  NSEnumerator *enumerator = [devices_ objectEnumerator];
+  HIDDevice *device;
+  int index = 0;
+  while ((device = [enumerator nextObject]) != nil) {
+    printf("%d: 0x%x\n", index, [[device getLocationId] intValue]);
+    ++index;
+  }
+}
+@end
+
 namespace {
 bool GetDevice(const int index,
                IOHIDDeviceRef *device) {
   HIDManager *manager = [[HIDManager alloc] init];
-  
-  const int kProductId = 0x1320;
-  const int kVendorId = 0x1294;
-  NSArray *device_array = [manager getDevicesWithVendorId:kVendorId productId:kProductId];
+  WebmailNotifier *notifier = [[WebmailNotifier alloc] initWithHIDManager:manager];
+  NSArray *device_array = [notifier devices];
   const NSUInteger count = [device_array count];
   if (count == 0 || count <= index) {
     return false;
   }
-  printf("%d\n", (int)count);
     
-  for (int i = 0; i < (int)count; ++i) { 
-    printf("%d: 0x%x\n", i,
-           [[[device_array objectAtIndex:i] getLocationId] intValue]);
-  }
-
+  [notifier outputDevices];
   *device = [[device_array objectAtIndex:index] deviceRef];
   return true;
 }
