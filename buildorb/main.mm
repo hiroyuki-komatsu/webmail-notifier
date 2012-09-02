@@ -30,6 +30,8 @@
 }
 
 - (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device;
+- (BOOL)open;
+- (BOOL)close;
 - (IOHIDDeviceRef)deviceRef;
 - (NSNumber *)getNumberProperty: (NSString *)key;
 - (NSNumber *)getLocationId;
@@ -41,6 +43,7 @@
 }
 
 - (id)initWithHIDManager: (HIDManager *)manager;
+- (NSUInteger) count;
 - (NSArray *)devices;
 - (void)outputDevices;
 @end
@@ -124,6 +127,16 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   return device_ref_;
 }
 
+- (BOOL)open {
+  const IOReturn result = IOHIDDeviceOpen(device_ref_, kIOHIDOptionsTypeNone);
+  return (result == kIOReturnSuccess);
+}
+
+- (BOOL)close {
+  const IOReturn result = IOHIDDeviceClose(device_ref_, kIOHIDOptionsTypeNone);
+  return (result == kIOReturnSuccess);
+}
+
 - (NSNumber *)getNumberProperty:(NSString *)key {
   if (!IOHIDDeviceGetTypeID() == CFGetTypeID(device_ref_)) {
     return nil;
@@ -164,6 +177,11 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   return devices_;
 }
 
+- (NSUInteger) count {
+  return [devices_ count];
+}
+
+
 - (void)outputDevices {
   int index = 0;
   for (HIDDevice *device in devices_) {
@@ -190,13 +208,13 @@ bool GetDevice(const int index,
 }
   
 
-bool SetColor(IOHIDDeviceRef device_ref, const int color) {
+bool SetColor(HIDDevice *device, const int color) {
   if (color > 7) {
     NSLog(@"ERROR: invalid argument.");
     return false;
   }
   
-  if (IOHIDDeviceOpen(device_ref, kIOHIDOptionsTypeNone) != kIOReturnSuccess) {
+  if (![device open]) {
     NSLog(@"ERROR: failed IOHIDDeviceOpen.");
     return false;
   }
@@ -206,13 +224,13 @@ bool SetColor(IOHIDDeviceRef device_ref, const int color) {
   buffer[0] = color;
   const CFIndex kReportID = 0;
   const IOReturn result = IOHIDDeviceSetReport(
-      device_ref, kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
+      [device deviceRef], kIOHIDReportTypeOutput, kReportID, buffer, kBufferSize);
   if (result != kIOReturnSuccess) {
     NSLog(@"ERROR: failed IOHIDDeviceSetReport.");
     return false;
   }
   
-  if (IOHIDDeviceClose(device_ref, kIOHIDOptionsTypeNone) != kIOReturnSuccess) {
+  if (![device close]) {
     NSLog(@"ERROR: failed IOHIDDeviceClose.");
     return false;
   }
@@ -232,15 +250,21 @@ int main(int argc, const char *argv[]) {
       color = atoi(argv[1]);
     }
 
-    IOHIDDeviceRef device_ref = NULL;
-//    const int index = (argc == 2) ? 0 : atoi(argv[2]);
-    if (!GetDevice(index, &device_ref)) {
-      NSLog(@"ERROR: failed GetDevice.");
-      return false;
+    HIDManager *manager = [[HIDManager alloc] init];
+    WebmailNotifier *notifier = [[WebmailNotifier alloc] initWithHIDManager:manager];
+    const NSUInteger count = [notifier count];
+    [notifier outputDevices];
+
+    if (count == 0) {
+      printf("No devices are found.\n");
+      return 1;
+    } else if (count <= index) {
+      printf("Invalid device index\n");
+      return 1;
     }
-  
-//    const int color = atoi(argv[1]);
-    SetColor(device_ref, color);
+    
+    HIDDevice *device = [[notifier devices] objectAtIndex:index];
+    SetColor(device, color);
   
     return 0;
   }
