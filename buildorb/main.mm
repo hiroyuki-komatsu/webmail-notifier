@@ -20,7 +20,7 @@
 - (id)init;
 - (void)dealloc;
 - (IOHIDManagerRef)managerRef;
-- (CFSetRef) copyDeviceSetWithVendorId: (int)vendor_id productId: (int)product_id;
+- (NSSet *) copyDeviceSetWithVendorId: (int)vendor_id productId: (int)product_id;
 @end
 
 
@@ -55,7 +55,7 @@
   return manager_ref_;
 }
 
-- (CFSetRef)copyDeviceSetWithVendorId:(int)vendor_id productId:(int)product_id {
+- (NSSet *)copyDeviceSetWithVendorId:(int)vendor_id productId:(int)product_id {
   NSMutableDictionary *dict = [NSMutableDictionary dictionary];
   [dict setObject:[NSNumber numberWithInt:vendor_id]
            forKey:[NSString stringWithCString:kIOHIDVendorIDKey
@@ -65,7 +65,7 @@
                                      encoding:NSUTF8StringEncoding]];
 
   IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
-  return IOHIDManagerCopyDevices(manager_ref_);
+  return (NSSet *)IOHIDManagerCopyDevices(manager_ref_);
 }
 
 @end
@@ -100,37 +100,39 @@ long GetLocationID(IOHIDDeviceRef device_ref) {
   return result;
 }
 
-int CompareDeviceRef(const void *device_a, const void *device_b) {
-  return ((int)GetLocationID(*(IOHIDDeviceRef*)device_a) -
-          (int)GetLocationID(*(IOHIDDeviceRef*)device_b));
+NSInteger CompareDeviceRef(id device1, id device2, void *context) {
+  const int comp = ((int)GetLocationID((IOHIDDeviceRef)device1) -
+                    (int)GetLocationID((IOHIDDeviceRef)device2)); 
+  if (comp < 0) {
+    return NSOrderedAscending;
+  } else if (comp > 0) {
+    return NSOrderedDescending;
+  } else {
+    return NSOrderedSame;
+  }
 }
   
 bool GetDevice(const int index,
                IOHIDDeviceRef *device) {
-  id manager_obj = [[HIDManager alloc] init];
+  HIDManager *manager_obj = [[HIDManager alloc] init];
   
   const int kProductId = 0x1320;
   const int kVendorId = 0x1294;
-  CFSetRef device_set = [manager_obj copyDeviceSetWithVendorId:kVendorId productId:kProductId];
-  const CFIndex count = CFSetGetCount(device_set);
+  NSSet *device_set = [manager_obj copyDeviceSetWithVendorId:kVendorId productId:kProductId];
+  const NSUInteger count = [device_set count];
   if (count == 0 || count <= index) {
-    CFRelease(device_set);
     return false;
   }
-    
-  IOHIDDeviceRef *device_array = (IOHIDDeviceRef *)malloc(count * sizeof(IOHIDDeviceRef));
-  CFSetGetValues(device_set, (const void **)device_array);
-  CFRelease(device_set);
-    
+  
+  NSArray *device_array = [[device_set allObjects] sortedArrayUsingFunction:CompareDeviceRef
+                                                                    context:NULL];
   printf("%d\n", (int)count);
-  qsort(device_array, count, sizeof(IOHIDDeviceRef), CompareDeviceRef);
     
   for (int i = 0; i < (int)count; ++i) { 
-    printf("%d: 0x%lx\n", i, GetLocationID(device_array[i]));
+    printf("%d: 0x%lx\n", i, GetLocationID((IOHIDDeviceRef)[device_array objectAtIndex:i]));
   }
     
-  *device = device_array[index];
-  free(device_array);
+  *device = (IOHIDDeviceRef)[device_array objectAtIndex:index];
   return true;
 }
   
@@ -168,18 +170,23 @@ bool SetColor(IOHIDDeviceRef device_ref, const int color) {
 
 int main(int argc, const char *argv[]) {
   @autoreleasepool {
-    if (argc < 2 || 3 < argc) {
-      return 1;
+    int index = 0;
+    int color = 0;
+    if (argc > 2) {
+      index = atoi(argv[2]);
+    }
+    if (argc > 1) {
+      color = atoi(argv[1]);
     }
 
     IOHIDDeviceRef device_ref = NULL;
-    const int index = (argc == 2) ? 0 : atoi(argv[2]);
+//    const int index = (argc == 2) ? 0 : atoi(argv[2]);
     if (!GetDevice(index, &device_ref)) {
       NSLog(@"ERROR: failed GetDevice.");
       return false;
     }
   
-    const int color = atoi(argv[1]);
+//    const int color = atoi(argv[1]);
     SetColor(device_ref, color);
   
     return 0;
