@@ -14,19 +14,19 @@
 
 @interface HIDManager : NSObject {
 @private
-  IOHIDManagerRef manager_ref_;  
+  IOHIDManagerRef managerRef_;  
 }
 
 - (id)init;
 - (void)dealloc;
 - (IOHIDManagerRef)managerRef;
-- (NSArray *) getDevicesWithVendorId: (int)vendor_id productId:(int)product_id;
+- (NSArray *) getDevicesWithVendorID: (int)vendorID productID:(int)productID;
 @end
 
 
 @interface HIDDevice : NSObject {
 @private
-  IOHIDDeviceRef device_ref_;
+  IOHIDDeviceRef deviceRef_;
 }
 
 - (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device;
@@ -34,8 +34,8 @@
 - (BOOL)close;
 - (IOHIDDeviceRef)deviceRef;
 - (NSNumber *)getNumberProperty: (NSString *)key;
-- (NSNumber *)getLocationId;
-- (BOOL)setReport: (int)report_id output:(NSData *)data;
+- (NSNumber *)getLocationID;
+- (BOOL)setReport: (int)reportID output:(NSData *)data;
 @end
 
 @interface WebmailNotifier : NSObject {
@@ -44,17 +44,17 @@
 }
 
 - (id)initWithHIDManager: (HIDManager *)manager;
-- (NSUInteger) count;
+- (NSUInteger)count;
 - (NSArray *)devices;
 - (void)outputDevices;
-- (BOOL)setDevice: (int)device_index color:(int)color_index;
+- (BOOL)setDevice: (int)deviceIndex color:(int)colorIndex;
 @end
 
 
 namespace {
 NSInteger CompareDeviceRef(id device1, id device2, void *context) {
-  const int comp = ([[(HIDDevice *)device1 getLocationId] intValue] -
-                    [[(HIDDevice *)device2 getLocationId] intValue]); 
+  const int comp = ([[(HIDDevice *)device1 getLocationID] intValue] -
+                    [[(HIDDevice *)device2 getLocationID] intValue]); 
   if (comp < 0) {
     return NSOrderedAscending;
   } else if (comp > 0) {
@@ -69,11 +69,11 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 - (id)init {
   self = [super init];
   if (self != nil) {
-    manager_ref_ = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
-    IOHIDManagerScheduleWithRunLoop(manager_ref_,
+    managerRef_ = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+    IOHIDManagerScheduleWithRunLoop(managerRef_,
                                     CFRunLoopGetMain(),
                                     kCFRunLoopDefaultMode);
-    const IOReturn result = IOHIDManagerOpen(manager_ref_, kIOHIDOptionsTypeNone);
+    const IOReturn result = IOHIDManagerOpen(managerRef_, kIOHIDOptionsTypeNone);
     if (result != kIOReturnSuccess) {
       NSLog(@"Failed IOHIDManagerOpen.");
     }
@@ -82,38 +82,38 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 }
 
 - (void)dealloc {
-  CFRelease(manager_ref_);
+  CFRelease(managerRef_);
 }
 
 - (IOHIDManagerRef)managerRef {
-  return manager_ref_;
+  return managerRef_;
 }
 
-- (NSArray *)getDevicesWithVendorId:(int)vendor_id productId:(int)product_id {
+- (NSArray *)getDevicesWithVendorID:(int)vendorID productID:(int)productID {
   NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
                         // Vendor ID
-                        [NSNumber numberWithInt:vendor_id],
+                        [NSNumber numberWithInt:vendorID],
                         @kIOHIDVendorIDKey,
                         // Product ID
-                        [NSNumber numberWithInt:product_id],
+                        [NSNumber numberWithInt:productID],
                         @kIOHIDProductIDKey,
                         nil];
 
-  IOHIDManagerSetDeviceMatching(manager_ref_, (CFDictionaryRef)dict);
+  IOHIDManagerSetDeviceMatching(managerRef_, (CFDictionaryRef)dict);
 
-  NSSet *device_set = (NSSet *)IOHIDManagerCopyDevices(manager_ref_);
+  NSSet *deviceSet = (NSSet *)IOHIDManagerCopyDevices(managerRef_);
 
-  NSEnumerator *set_enum = [device_set objectEnumerator];
-  NSMutableArray *device_array = [[NSMutableArray alloc] init];
-  IOHIDDeviceRef device_ref;
-  while ((device_ref = (IOHIDDeviceRef)[set_enum nextObject]) != nil) {
-    [device_array addObject:[[HIDDevice alloc]
-                             initWithIOHIDDeviceRef:device_ref]];
+  NSEnumerator *setEnum = [deviceSet objectEnumerator];
+  NSMutableArray *deviceArray = [[NSMutableArray alloc] init];
+  IOHIDDeviceRef deviceRef;
+  while ((deviceRef = (IOHIDDeviceRef)[setEnum nextObject]) != nil) {
+    [deviceArray addObject:[[HIDDevice alloc]
+                             initWithIOHIDDeviceRef:deviceRef]];
   }
-  NSArray *sorted_array = [device_array
-                           sortedArrayUsingFunction:CompareDeviceRef
-                           context:NULL];
-  return sorted_array;
+  NSArray *sortedArray = [deviceArray
+                          sortedArrayUsingFunction:CompareDeviceRef
+                          context:NULL];
+  return sortedArray;
 }
 @end
 
@@ -121,47 +121,47 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 - (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device {
   self = [super init];
   if (self != nil) {
-    device_ref_ = device;
+    deviceRef_ = device;
   }
   return self;
 }
 
 - (IOHIDDeviceRef)deviceRef {
-  return device_ref_;
+  return deviceRef_;
 }
 
 - (BOOL)open {
-  const IOReturn result = IOHIDDeviceOpen(device_ref_, kIOHIDOptionsTypeNone);
+  const IOReturn result = IOHIDDeviceOpen(deviceRef_, kIOHIDOptionsTypeNone);
   return (result == kIOReturnSuccess);
 }
 
 - (BOOL)close {
-  const IOReturn result = IOHIDDeviceClose(device_ref_, kIOHIDOptionsTypeNone);
+  const IOReturn result = IOHIDDeviceClose(deviceRef_, kIOHIDOptionsTypeNone);
   return (result == kIOReturnSuccess);
 }
 
 - (NSNumber *)getNumberProperty:(NSString *)key {
-  if (!IOHIDDeviceGetTypeID() == CFGetTypeID(device_ref_)) {
+  if (!IOHIDDeviceGetTypeID() == CFGetTypeID(deviceRef_)) {
     return nil;
   }
   
-  CFTypeRef cftype_ref = IOHIDDeviceGetProperty(device_ref_, (CFStringRef)key);
-  if (!cftype_ref ||
-      CFNumberGetTypeID() != CFGetTypeID(cftype_ref)) {
+  CFTypeRef cftypeRef = IOHIDDeviceGetProperty(deviceRef_, (CFStringRef)key);
+  if (!cftypeRef ||
+      CFNumberGetTypeID() != CFGetTypeID(cftypeRef)) {
     return nil;
   }
   
-  return (NSNumber *)cftype_ref;
+  return (NSNumber *)cftypeRef;
 }
 
-- (NSNumber *)getLocationId {
+- (NSNumber *)getLocationID {
   return [self getNumberProperty:
           [NSString stringWithCString:kIOHIDLocationIDKey
                              encoding:NSUTF8StringEncoding]];
 }
 
-- (BOOL)setReport:(int)report_id output:(NSData *)data {
-  const IOReturn result = IOHIDDeviceSetReport(device_ref_, kIOHIDReportTypeOutput, report_id, (const uint8_t *)[data bytes], [data length]);
+- (BOOL)setReport:(int)reportID output:(NSData *)data {
+  const IOReturn result = IOHIDDeviceSetReport(deviceRef_, kIOHIDReportTypeOutput, reportID, (const uint8_t *)[data bytes], [data length]);
   return (result == kIOReturnSuccess);
 }
 @end
@@ -175,9 +175,9 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
     return nil;
   }
 
-  const int kProductId = 0x1320;
-  const int kVendorId = 0x1294;
-  devices_ = [manager getDevicesWithVendorId:kVendorId productId:kProductId];
+  const int kProductID = 0x1320;
+  const int kVendorID = 0x1294;
+  devices_ = [manager getDevicesWithVendorID:kVendorID productID:kProductID];
   return self;
 }
 
@@ -192,18 +192,18 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 - (void)outputDevices {
   int index = 0;
   for (HIDDevice *device in devices_) {
-    printf("%d: 0x%x\n", index, [[device getLocationId] intValue]);
+    NSLog(@"%d: 0x%x", index, [[device getLocationID] intValue]);
     ++index;
   }
 }
 
-- (BOOL)setDevice: (int)device_index color:(int)color_index {
-  if (color_index > 7) {
+- (BOOL)setDevice: (int)deviceIndex color:(int)colorIndex {
+  if (colorIndex > 7) {
     NSLog(@"ERROR: invalid color argument.");
     return NO;
   }
   
-  HIDDevice *device = [devices_ objectAtIndex:device_index];
+  HIDDevice *device = [devices_ objectAtIndex:deviceIndex];
   if (![device open]) {
     NSLog(@"ERROR: failed IOHIDDeviceOpen.");
     return NO;
@@ -211,7 +211,7 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
   
   const size_t kBufferSize = 1;
   uint8_t buffer[kBufferSize];
-  buffer[0] = color_index;
+  buffer[0] = colorIndex;
   NSData *data = [[NSData alloc] initWithBytes:buffer length:kBufferSize];
   const CFIndex kReportID = 0;
   if (![device setReport:kReportID output:data]) {
@@ -245,10 +245,10 @@ int main(int argc, const char *argv[]) {
     [notifier outputDevices];
 
     if (count == 0) {
-      printf("No devices are found.\n");
+      NSLog(@"No devices are found.");
       return 1;
     } else if (count <= index) {
-      printf("Invalid device index\n");
+      NSLog(@"Invalid device index");
       return 1;
     }
     
