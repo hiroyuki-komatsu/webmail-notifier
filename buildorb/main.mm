@@ -12,15 +12,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-@interface HIDManager : NSObject {
-@private
-  IOHIDManagerRef managerRef_;  
-}
-
+@protocol HIDManagerProtocol <NSObject>
 - (id)init;
 - (void)dealloc;
 - (IOHIDManagerRef)managerRef;
 - (NSArray *) getDevicesWithVendorID: (int)vendorID productID:(int)productID;
+@end
+
+
+@interface HIDManager : NSObject <HIDManagerProtocol> {
+@private
+  IOHIDManagerRef managerRef_;  
+}
 @end
 
 
@@ -46,7 +49,7 @@
   NSArray *devices_;
 }
 
-- (id)initWithHIDManager: (HIDManager *)manager;
+- (id)initWithHIDManager: (id<HIDManagerProtocol>)manager;
 - (NSUInteger)count;
 - (NSArray *)devices;
 - (void)outputDevices;
@@ -172,7 +175,7 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 
 @implementation WebmailNotifier
 
-- (id)initWithHIDManager: (HIDManager *)manager {
+- (id)initWithHIDManager: (id<HIDManagerProtocol>)manager {
   self = [super init];
   if (self == nil) {
     return nil;
