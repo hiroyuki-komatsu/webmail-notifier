@@ -24,11 +24,7 @@
 @end
 
 
-@interface HIDDevice : NSObject {
-@private
-  IOHIDDeviceRef deviceRef_;
-}
-
+@protocol HIDDeviceProtocol <NSObject>
 - (id)initWithIOHIDDeviceRef: (IOHIDDeviceRef)device;
 - (BOOL)open;
 - (BOOL)close;
@@ -36,6 +32,13 @@
 - (NSNumber *)getNumberProperty: (NSString *)key;
 - (NSNumber *)getLocationID;
 - (BOOL)setReport: (int)reportID output:(NSData *)data;
+@end
+
+
+@interface HIDDevice : NSObject <HIDDeviceProtocol> {
+@private
+  IOHIDDeviceRef deviceRef_;
+}
 @end
 
 @interface WebmailNotifier : NSObject {
@@ -53,8 +56,8 @@
 
 namespace {
 NSInteger CompareDeviceRef(id device1, id device2, void *context) {
-  const int comp = ([[(HIDDevice *)device1 getLocationID] intValue] -
-                    [[(HIDDevice *)device2 getLocationID] intValue]); 
+  const int comp = ([[(id<HIDDeviceProtocol>)device1 getLocationID] intValue] -
+                    [[(id<HIDDeviceProtocol>)device2 getLocationID] intValue]); 
   if (comp < 0) {
     return NSOrderedAscending;
   } else if (comp > 0) {
@@ -191,7 +194,7 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
 
 - (void)outputDevices {
   int index = 0;
-  for (HIDDevice *device in devices_) {
+  for (id<HIDDeviceProtocol> device in devices_) {
     NSLog(@"%d: 0x%x", index, [[device getLocationID] intValue]);
     ++index;
   }
@@ -203,7 +206,7 @@ NSInteger CompareDeviceRef(id device1, id device2, void *context) {
     return NO;
   }
   
-  HIDDevice *device = [devices_ objectAtIndex:deviceIndex];
+  id<HIDDeviceProtocol> device = [devices_ objectAtIndex:deviceIndex];
   if (![device open]) {
     NSLog(@"ERROR: failed IOHIDDeviceOpen.");
     return NO;
