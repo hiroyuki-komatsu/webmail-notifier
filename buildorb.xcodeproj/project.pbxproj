@@ -16,6 +16,8 @@
 		EBF4F33A165145A4003344CA /* libgtest_main.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EBF4F309165143CB003344CA /* libgtest_main.a */; };
 		EBF4F33C1651467D003344CA /* buildorb_test.mm in Sources */ = {isa = PBXBuildFile; fileRef = EBF4F33B1651467D003344CA /* buildorb_test.mm */; };
 		EBF4F33D16528F91003344CA /* libgtest.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EBF4F307165143CB003344CA /* libgtest.a */; };
+		EBF4F34116529A36003344CA /* HIDManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = EBF4F34016529A36003344CA /* HIDManager.mm */; };
+		EBF4F3561653F086003344CA /* HIDManagerMock.mm in Sources */ = {isa = PBXBuildFile; fileRef = EBF4F3551653F086003344CA /* HIDManagerMock.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -104,7 +106,12 @@
 		EBF4F32C1651453E003344CA /* buildorb_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = buildorb_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		EBF4F3331651453E003344CA /* buildorb_test-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "buildorb_test-Prefix.pch"; sourceTree = "<group>"; };
 		EBF4F3341651453E003344CA /* buildorb_test.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = buildorb_test.1; sourceTree = "<group>"; };
-		EBF4F33B1651467D003344CA /* buildorb_test.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = buildorb_test.mm; sourceTree = "<group>"; };
+		EBF4F33B1651467D003344CA /* buildorb_test.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = buildorb_test.mm; path = buildorb_test/buildorb_test.mm; sourceTree = SOURCE_ROOT; };
+		EBF4F33E16529748003344CA /* HIDManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HIDManager.h; sourceTree = "<group>"; };
+		EBF4F33F16529986003344CA /* HIDManagerProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HIDManagerProtocol.h; sourceTree = "<group>"; };
+		EBF4F34016529A36003344CA /* HIDManager.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = HIDManager.mm; sourceTree = "<group>"; };
+		EBF4F3541653F086003344CA /* HIDManagerMock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HIDManagerMock.h; sourceTree = "<group>"; };
+		EBF4F3551653F086003344CA /* HIDManagerMock.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = HIDManagerMock.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -165,6 +172,12 @@
 				EBAF6E4B15F269DA003C35DD /* main.mm */,
 				EBAF6E4F15F269DA003C35DD /* buildorb.1 */,
 				EBAF6E4D15F269DA003C35DD /* Supporting Files */,
+				EBF4F33E16529748003344CA /* HIDManager.h */,
+				EBF4F33F16529986003344CA /* HIDManagerProtocol.h */,
+				EBF4F34016529A36003344CA /* HIDManager.mm */,
+				EBF4F33B1651467D003344CA /* buildorb_test.mm */,
+				EBF4F3541653F086003344CA /* HIDManagerMock.h */,
+				EBF4F3551653F086003344CA /* HIDManagerMock.mm */,
 			);
 			path = buildorb;
 			sourceTree = "<group>";
@@ -194,7 +207,6 @@
 		EBF4F32F1651453E003344CA /* buildorb_test */ = {
 			isa = PBXGroup;
 			children = (
-				EBF4F33B1651467D003344CA /* buildorb_test.mm */,
 				EBF4F3341651453E003344CA /* buildorb_test.1 */,
 				EBF4F3321651453E003344CA /* Supporting Files */,
 			);
@@ -336,6 +348,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EBAF6E4C15F269DA003C35DD /* main.mm in Sources */,
+				EBF4F34116529A36003344CA /* HIDManager.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -344,6 +357,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EBF4F33C1651467D003344CA /* buildorb_test.mm in Sources */,
+				EBF4F3561653F086003344CA /* HIDManagerMock.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
